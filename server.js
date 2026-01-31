@@ -13,16 +13,23 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Configuração do Banco de Dados
-const pool = mysql.createPool({
+const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'u856557853_nfdas_user',
+  password: process.env.DB_PASSWORD || 'NfDaS@2027',
+  database: process.env.DB_NAME || 'u856557853_nfdas_db',
+  port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
-});
+};
+
+console.log('[NFDas] Configuração do Banco de Dados:');
+console.log(`  - Host: ${DB_CONFIG.host}`);
+console.log(`  - User: ${DB_CONFIG.user}`);
+console.log(`  - Database: ${DB_CONFIG.database}`);
+
+const pool = mysql.createPool(DB_CONFIG);
 
 // Configuração da API Hostinger
 const hostingerAPI = axios.create({
@@ -46,24 +53,61 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Debug - Verificar variáveis de ambiente
+app.get('/api/debug', (req, res) => {
+  res.json({
+    message: 'Debug endpoint',
+    environment: process.env.NODE_ENV || 'development',
+    config: {
+      host: DB_CONFIG.host,
+      user: DB_CONFIG.user,
+      database: DB_CONFIG.database,
+      port: DB_CONFIG.port
+    },
+    env_vars: {
+      DB_HOST: process.env.DB_HOST ? 'SET' : 'NOT SET',
+      DB_USER: process.env.DB_USER ? 'SET' : 'NOT SET',
+      DB_PASSWORD: process.env.DB_PASSWORD ? 'SET' : 'NOT SET',
+      DB_NAME: process.env.DB_NAME ? 'SET' : 'NOT SET',
+      NODE_ENV: process.env.NODE_ENV ? 'SET' : 'NOT SET'
+    }
+  });
+});
+
 // Teste de Conexão com Banco de Dados
 app.get('/api/db-test', async (req, res) => {
+  let connection;
   try {
-    const connection = await pool.getConnection();
+    console.log('[NFDas] Testando conexão com banco de dados...');
+    connection = await pool.getConnection();
     const [rows] = await connection.query('SELECT 1 as test');
-    connection.release();
     
     res.json({
       status: 'OK',
       message: 'Conexão com banco de dados bem-sucedida',
-      result: rows
+      result: rows,
+      config: {
+        host: DB_CONFIG.host,
+        database: DB_CONFIG.database
+      }
     });
   } catch (error) {
+    console.error('[NFDas] Erro ao conectar:', error.message);
     res.status(500).json({
       status: 'ERROR',
       message: 'Erro ao conectar com banco de dados',
-      error: error.message
+      error: error.message,
+      config: {
+        host: DB_CONFIG.host,
+        user: DB_CONFIG.user,
+        database: DB_CONFIG.database,
+        port: DB_CONFIG.port
+      }
     });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
