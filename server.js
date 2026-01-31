@@ -14,7 +14,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Configuração do Banco de Dados
 const DB_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   user: process.env.DB_USER || 'u856557853_manager',
   password: process.env.DB_PASSWORD || 'Root@2027',
   database: process.env.DB_NAME || 'u856557853_db_nfdas',
