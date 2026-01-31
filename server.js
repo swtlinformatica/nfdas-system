@@ -1,0 +1,234 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const mysql = require('mysql2/promise');
+const axios = require('axios');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Configuração do Banco de Dados
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
+// Configuração da API Hostinger
+const hostingerAPI = axios.create({
+  baseURL: process.env.HOSTINGER_API_URL || 'https://api.hostinger.com/v1',
+  headers: {
+    'Authorization': `Bearer ${process.env.HOSTINGER_API_TOKEN}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+// ============================================
+// ROTAS DE TESTE
+// ============================================
+
+// Health Check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Servidor NFDas está funcionando',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Teste de Conexão com Banco de Dados
+app.get('/api/db-test', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query('SELECT 1 as test');
+    connection.release();
+    
+    res.json({
+      status: 'OK',
+      message: 'Conexão com banco de dados bem-sucedida',
+      result: rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Erro ao conectar com banco de dados',
+      error: error.message
+    });
+  }
+});
+
+// Teste de Conexão com API Hostinger
+app.get('/api/hostinger-test', async (req, res) => {
+  try {
+    const response = await hostingerAPI.get('/orders');
+    
+    res.json({
+      status: 'OK',
+      message: 'Conexão com API Hostinger bem-sucedida',
+      data: response.data
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Erro ao conectar com API Hostinger',
+      error: error.message,
+      details: error.response?.data || 'Sem detalhes'
+    });
+  }
+});
+
+// ============================================
+// ROTAS DE BANCO DE DADOS
+// ============================================
+
+// Criar tabelas iniciais
+app.post('/api/init-database', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Tabela de Usuários
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Tabela de Empresas
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS companies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        cnpj VARCHAR(20) UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    
+    // Tabela de Certificados
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS certificates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        certificate_data LONGBLOB NOT NULL,
+        certificate_password_encrypted VARCHAR(255),
+        expiration_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (company_id) REFERENCES companies(id)
+      )
+    `);
+    
+    // Tabela de Notas Fiscais (Cache)
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        invoice_key VARCHAR(50) UNIQUE NOT NULL,
+        invoice_type ENUM('nfe', 'nfse') NOT NULL,
+        emitter_cnpj VARCHAR(20),
+        receiver_cnpj VARCHAR(20),
+        invoice_date DATE,
+        total_amount DECIMAL(15, 2),
+        status VARCHAR(50),
+        raw_data LONGTEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (company_id) REFERENCES companies(id)
+      )
+    `);
+    
+    // Tabela de Assinaturas
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        plan VARCHAR(50) NOT NULL,
+        status ENUM('active', 'inactive', 'cancelled') DEFAULT 'active',
+        start_date DATE,
+        end_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    
+    connection.release();
+    
+    res.json({
+      status: 'OK',
+      message: 'Banco de dados inicializado com sucesso'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Erro ao inicializar banco de dados',
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// ROTAS DE HOSTINGER API
+// ============================================
+
+// Listar sites/domínios
+app.get('/api/hostinger/websites', async (req, res) => {
+  try {
+    const response = await hostingerAPI.get('/websites');
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Erro ao listar websites',
+      error: error.message
+    });
+  }
+});
+
+// Listar bancos de dados
+app.get('/api/hostinger/databases', async (req, res) => {
+  try {
+    const response = await hostingerAPI.get('/databases');
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Erro ao listar bancos de dados',
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// INICIAR SERVIDOR
+// ============================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`
+  ╔════════════════════════════════════════╗
+  ║   Sistema NFDas - Servidor Iniciado    ║
+  ║   Porta: ${PORT}                            ║
+  ║   Ambiente: ${process.env.NODE_ENV || 'development'}          ║
+  ╚════════════════════════════════════════╝
+  `);
+});
+
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
