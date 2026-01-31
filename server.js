@@ -16,7 +16,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'u856557853_nfdas_user',
-  password: process.env.DB_PASSWORD || 'NfDaS@2027',
+  password: process.env.DB_PASSWORD || 'NfDaS@2028',
   database: process.env.DB_NAME || 'u856557853_nfdas_db',
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
