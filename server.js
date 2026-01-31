@@ -15,9 +15,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Configuração do Banco de Dados
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'u856557853_nfdas_user',
-  password: process.env.DB_PASSWORD || 'NfDaS@2028',
-  database: process.env.DB_NAME || 'u856557853_nfdas_db',
+  user: process.env.DB_USER || 'u856557853_manager',
+  password: process.env.DB_PASSWORD || 'Root@2027',
+  database: process.env.DB_NAME || 'u856557853_db_nfdas',
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 10,
