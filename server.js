@@ -44,6 +44,23 @@ const hostingerAPI = axios.create({
 // ROTAS DE TESTE
 // ============================================
 
+// Rota raiz
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Bem-vindo ao Sistema NFDas',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      debug: '/api/debug',
+      dbTest: '/api/db-test',
+      initDatabase: '/api/init-database',
+      hostingerTest: '/api/hostinger-test'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health Check
 app.get('/health', (req, res) => {
   res.json({
