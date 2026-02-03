@@ -49,9 +49,9 @@ const hostingerAPI = axios.create({
 // ============================================
 // IMPORTAR ROTAS
 // ============================================
-const authRoutes = require('./routes/auth');
-const companiesRoutes = require('./routes/companies');
-const certificatesRoutes = require('./routes/certificates');
+const authRoutes = require('./htpublic_html/routes/auth');
+const companiesRoutes = require('./htpublic_html/routes/companies');
+const certificatesRoutes = require('./htpublic_html/routes/certificates');
 
 // ============================================
 // ROTAS DE TESTE
