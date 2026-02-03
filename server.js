@@ -4,6 +4,8 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -11,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuração do Banco de Dados
 const DB_CONFIG = {
@@ -31,6 +34,9 @@ console.log(`  - Database: ${DB_CONFIG.database}`);
 
 const pool = mysql.createPool(DB_CONFIG);
 
+// Exportar pool para uso em rotas
+global.db = pool;
+
 // Configuração da API Hostinger
 const hostingerAPI = axios.create({
   baseURL: process.env.HOSTINGER_API_URL || 'https://api.hostinger.com/v1',
@@ -39,6 +45,13 @@ const hostingerAPI = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// ============================================
+// IMPORTAR ROTAS
+// ============================================
+const authRoutes = require('./routes/auth');
+const companiesRoutes = require('./routes/companies');
+const certificatesRoutes = require('./routes/certificates');
 
 // ============================================
 // ROTAS DE TESTE
@@ -53,6 +66,9 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       debug: '/api/debug',
+      auth: '/api/auth',
+      companies: '/api/companies',
+      certificates: '/api/certificates',
       dbTest: '/api/db-test',
       initDatabase: '/api/init-database',
       hostingerTest: '/api/hostinger-test'
@@ -147,6 +163,13 @@ app.get('/api/hostinger-test', async (req, res) => {
     });
   }
 });
+
+// ============================================
+// USAR ROTAS
+// ============================================
+app.use('/api/auth', authRoutes);
+app.use('/api/companies', companiesRoutes);
+app.use('/api/certificates', certificatesRoutes);
 
 // ============================================
 // ROTAS DE BANCO DE DADOS
@@ -272,6 +295,16 @@ app.get('/api/hostinger/databases', async (req, res) => {
     });
   }
 });
+
+// ============================================
+// CRIAR DIRETÓRIOS NECESSÁRIOS
+// ============================================
+
+const uploadsDir = path.join(__dirname, 'uploads/certificates');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('[NFDas] Diretório de uploads criado:', uploadsDir);
+}
 
 // ============================================
 // INICIAR SERVIDOR
