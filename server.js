@@ -13,6 +13,17 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Middleware para detectar domínio
+app.use((req, res, next) => {
+  const host = req.headers.host || '';
+  req.isAppDomain = host.includes('app.');
+  req.isDomain = host.includes('nfdas.com.br');
+  console.log(`[NFDas] Host: ${host}, isAppDomain: ${req.isAppDomain}`);
+  next();
+});
+
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuração do Banco de Dados
@@ -57,12 +68,30 @@ const certificatesRoutes = require('./htpublic_html/routes/certificates');
 // ROTAS DE TESTE
 // ============================================
 
-// Rota raiz
+// Rota raiz - diferenciada por domínio
 app.get('/', (req, res) => {
+  if (req.isAppDomain) {
+    // Para app.nfdas.com.br - retorna JSON indicando que é a app
+    return res.json({
+      status: 'OK',
+      message: 'Bem-vindo ao NFDas App',
+      version: '1.0.0',
+      type: 'app',
+      endpoints: {
+        auth: '/api/auth',
+        companies: '/api/companies',
+        certificates: '/api/certificates'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Para nfdas.com.br - retorna JSON indicando que é a landing page
   res.json({
     status: 'OK',
     message: 'Bem-vindo ao Sistema NFDas',
     version: '1.0.0',
+    type: 'landing',
     endpoints: {
       health: '/health',
       debug: '/api/debug',
