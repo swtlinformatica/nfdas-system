@@ -326,6 +326,34 @@ app.get('/api/hostinger/databases', async (req, res) => {
 });
 
 // ============================================
+// MIDDLEWARE PARA REACT SPA (FALLBACK)
+// ============================================
+
+// Servir index.html para rotas não encontradas (SPA routing)
+app.use((req, res, next) => {
+  // Se for uma rota de API, passar para o próximo middleware
+  if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
+    return next();
+  }
+  
+  // Se for um arquivo estático (com extensão), passar para o próximo middleware
+  if (req.path.includes('.')) {
+    return next();
+  }
+  
+  // Caso contrário, servir o index.html do React
+  const indexPath = path.join(__dirname, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({
+      status: 'ERROR',
+      message: 'index.html não encontrado'
+    });
+  }
+});
+
+// ============================================
 // CRIAR DIRETÓRIOS NECESSÁRIOS
 // ============================================
 
