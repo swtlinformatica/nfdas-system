@@ -68,7 +68,7 @@ const certificatesRoutes = require('./htpublic_html/routes/certificates');
 // ROTAS DE TESTE
 // ============================================
 
-// Rota raiz - diferenciada por domínio
+// Rota raiz - serve React SPA para nfdas.com.br
 app.get('/', (req, res) => {
   if (req.isAppDomain) {
     // Para app.nfdas.com.br - retorna JSON indicando que é a app
@@ -86,18 +86,8 @@ app.get('/', (req, res) => {
     });
   }
   
-  // Para nfdas.com.br - retorna JSON indicando que é a landing page
-  res.json({
-    status: 'OK',
-    message: 'Bem-vindo ao Sistema NFDas',
-    version: '1.0.0',
-    type: 'landing',
-    endpoints: {
-      health: '/health',
-      debug: '/api/debug',
-      auth: '/api/auth',
-      companies: '/api/companies',
-      certificates: '/api/certificates',
+  // Para nfdas.com.br - serve o React SPA
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
       dbTest: '/api/db-test',
       initDatabase: '/api/init-database',
       hostingerTest: '/api/hostinger-test'
